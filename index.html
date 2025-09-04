@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Interativo com Cronômetro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+        .timer-circle {
+            transform: rotate(-90deg);
+        }
+        .timer-path-remaining {
+            stroke-linecap: round;
+        }
+        .answer-btn {
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+        .answer-btn:hover {
+            transform: translateY(-2px);
+        }
+        .correct {
+            background-color: #22c55e !important;
+            color: white !important;
+            border-color: #16a34a !important;
+        }
+        .incorrect {
+            background-color: #ef4444 !important;
+            color: white !important;
+            border-color: #dc2626 !important;
+        }
+    </style>
+</head>
+<body class="bg-white dark:bg-black text-black dark:text-white flex items-center justify-center min-h-screen">
+
+    <div id="quiz-container" class="w-full max-w-4xl mx-auto p-4 md:p-8 bg-gray-100 dark:bg-gray-900 rounded-2xl shadow-2xl">
+        
+        <!-- Tela Inicial -->
+        <div id="start-screen" class="text-center">
+            <img src="logofiapcsohol.png" alt="Logo FIAP School" class="h-24 mx-auto mb-6">
+            <h1 class="text-4xl md:text-5xl font-bold text-[#D9007E] mb-4">Quiz de Matemática</h1>
+            <p class="text-lg md:text-xl text-gray-600 dark:text-gray-300 mb-8">Teste seus conhecimentos em matemática!</p>
+            <button id="start-btn" class="w-full md:w-auto bg-[#D9007E] text-white font-bold py-3 px-8 rounded-xl text-xl hover:bg-[#00A99D] transition-all duration-300 transform hover:scale-105">
+                Começar!
+            </button>
+        </div>
+
+        <!-- Tela do Quiz -->
+        <div id="quiz-screen" class="hidden">
+            <div class="mb-6 flex justify-between items-center">
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                    Pergunta <span id="question-number"></span> de <span id="total-questions"></span>
+                </p>
+                <p class="text-lg font-semibold">Pontuação: <span id="score">0</span></p>
+            </div>
+            
+            <div id="question-box" class="w-full bg-gray-200 dark:bg-black p-6 rounded-xl mb-6 text-center">
+                <h2 id="question-text" class="text-2xl md:text-3xl font-semibold"></h2>
+            </div>
+            
+            <div class="flex flex-col md:flex-row items-start gap-6">
+                <div id="answers-box" class="w-full md:w-2/3 space-y-4">
+                    <!-- Opções de resposta serão inseridas aqui via JS -->
+                </div>
+                
+                <div id="timer-box" class="w-full md:w-1/3 flex flex-col items-center justify-center">
+                     <div class="relative w-32 h-32 md:w-40 md:h-40">
+                        <svg class="w-full h-full timer-circle" viewBox="0 0 100 100">
+                            <!-- Círculo de fundo -->
+                            <circle class="text-gray-300 dark:text-gray-700" stroke-width="8" stroke="currentColor" fill="transparent" r="45" cx="50" cy="50" />
+                            <!-- Círculo de progresso -->
+                            <path id="timer-path-remaining"
+                                class="text-[#00A99D]"
+                                stroke-width="8"
+                                stroke="currentColor"
+                                fill="transparent"
+                                d="M 50, 50
+                                   m -45, 0
+                                   a 45,45 0 1,0 90,0
+                                   a 45,45 0 1,0 -90,0"
+                            ></path>
+                        </svg>
+                        <span id="time-left" class="absolute inset-0 flex items-center justify-center text-4xl font-bold"></span>
+                    </div>
+                </div>
+            </div>
+             <div id="feedback" class="mt-6 text-center text-xl font-medium h-8"></div>
+        </div>
+
+        <!-- Tela de Resultados -->
+        <div id="results-screen" class="hidden text-center">
+            <h2 id="results-title" class="text-3xl md:text-4xl font-bold mb-4"></h2>
+            <p class="text-xl md:text-2xl mb-2">Sua pontuação final foi:</p>
+            <p id="final-score" class="text-6xl font-extrabold text-[#D9007E] mb-8"></p>
+            <button id="restart-btn" class="w-full md:w-auto bg-[#D9007E] text-white font-bold py-3 px-8 rounded-xl text-xl hover:bg-[#00A99D] transition-all duration-300 transform hover:scale-105">
+                Jogar Novamente
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const quizData = [
+            { question: "Qual o resultado de 250 + 175?", answers: [{ text: "425", correct: true }, { text: "430", correct: false }, { text: "325", correct: false }] },
+            { question: "Se um bolo é dividido em 8 fatias, que fração representa uma fatia?", answers: [{ text: "1/8", correct: true }, { text: "1/4", correct: false }, { text: "1/2", correct: false }] },
+            { question: "Quanto é 12 x 15?", answers: [{ text: "180", correct: true }, { text: "150", correct: false }, { text: "165", correct: false }] },
+            { question: "Qual o valor de 78 - 34?", answers: [{ text: "44", correct: true }, { text: "46", correct: false }, { text: "54", correct: false }] },
+            { question: "Se um pacote de biscoitos custa R$ 2,50, quanto custam 3 pacotes?", answers: [{ text: "7,50", correct: true }, { text: "6,50", correct: false }, { text: "8,00", correct: false }] },
+            { question: "Quantos minutos há em 2 horas?", answers: [{ text: "120", correct: true }, { text: "60", correct: false }, { text: "90", correct: false }] },
+            { question: "Qual é o próximo número na sequência: 5, 10, 15, 20...?", answers: [{ text: "25", correct: true }, { text: "30", correct: false }, { text: "22", correct: false }] },
+            { question: "Se um quadrado tem lado de 5 cm, qual é a sua área?", answers: [{ text: "25 cm²", correct: true }, { text: "20 cm²", correct: false }, { text: "10 cm²", correct: false }] },
+            { question: "Quanto é 450 ÷ 9?", answers: [{ text: "50", correct: true }, { text: "45", correct: false }, { text: "60", correct: false }] },
+            { question: "Qual é o dobro de 65?", answers: [{ text: "130", correct: true }, { text: "120", correct: false }, { text: "135", correct: false }] },
+            { question: "Qual o valor de 3/4 + 1/4?", answers: [{ text: "1", correct: true }, { text: "1/2", correct: false }, { text: "1/4", correct: false }] },
+            { question: "Quanto é 0,5 + 0,25?", answers: [{ text: "0,75", correct: true }, { text: "0,5", correct: false }, { text: "0,8", correct: false }] },
+            { question: "Se você tem 5 notas de R$ 10, quanto dinheiro você tem?", answers: [{ text: "R$ 50", correct: true }, { text: "R$ 15", correct: false }, { text: "R$ 5", correct: false }] },
+            { question: "Qual é o resultado de 1000 - 325?", answers: [{ text: "675", correct: true }, { text: "775", correct: false }, { text: "650", correct: false }] },
+            { question: "Se uma pizza tem 6 fatias, e você come 2, que fração da pizza você comeu?", answers: [{ text: "2/6", correct: true }, { text: "1/4", correct: false }, { text: "1/6", correct: false }] },
+            { question: "Quanto é 8 x 8?", answers: [{ text: "64", correct: true }, { text: "56", correct: false }, { text: "72", correct: false }] },
+            { question: "Qual o número par depois de 48?", answers: [{ text: "50", correct: true }, { text: "49", correct: false }, { text: "52", correct: false }] },
+            { question: "Quantos centímetros tem um metro?", answers: [{ text: "100", correct: true }, { text: "10", correct: false }, { text: "1000", correct: false }] },
+            { question: "Qual o resultado de 2,5 x 4?", answers: [{ text: "10", correct: true }, { text: "8", correct: false }, { text: "12", correct: false }] },
+            { question: "Quanto é 150 ÷ 3?", answers: [{ text: "50", correct: true }, { text: "45", correct: false }, { text: "55", correct: false }] },
+            { question: "Qual o triplo de 20?", answers: [{ text: "60", correct: true }, { text: "40", correct: false }, { text: "80", correct: false }] },
+            { question: "Se um mês tem 30 dias, quantos dias têm 3 meses?", answers: [{ text: "90", correct: true }, { text: "120", correct: false }, { text: "60", correct: false }] },
+            { question: "Qual é o resultado de 25 + 75 - 50?", answers: [{ text: "50", correct: true }, { text: "100", correct: false }, { text: "25", correct: false }] },
+            { question: "Quanto é 1/2 de 50?", answers: [{ text: "25", correct: true }, { text: "10", correct: false }, { text: "20", correct: false }] },
+            { question: "Se você tem R$ 10 e gasta R$ 3,50, quanto sobra?", answers: [{ text: "R$ 6,50", correct: true }, { text: "R$ 7,50", correct: false }, { text: "R$ 6", correct: false }] },
+            { question: "Qual o número primo entre 10 e 15?", answers: [{ text: "11", correct: true }, { text: "12", correct: false }, { text: "14", correct: false }] },
+            { question: "Quantas dezenas há em 240?", answers: [{ text: "24", correct: true }, { text: "240", correct: false }, { text: "2400", correct: false }] },
+            { question: "Quanto é 6,75 + 2,25?", answers: [{ text: "9", correct: true }, { text: "8,5", correct: false }, { text: "10", correct: false }] },
+            { question: "Se uma caixa contém 12 ovos, quantos ovos há em 5 caixas?", answers: [{ text: "60", correct: true }, { text: "50", correct: false }, { text: "72", correct: false }] },
+            { question: "Qual é o resultado de 9 x 9?", answers: [{ text: "81", correct: true }, { text: "72", correct: false }, { text: "90", correct: false }] },
+            { question: "Qual é o valor de 100 ÷ 5?", answers: [{ text: "20", correct: true }, { text: "25", correct: false }, { text: "15", correct: false }] },
+            { question: "Se um livro tem 180 páginas, e você lê 60, quantas faltam?", answers: [{ text: "120", correct: true }, { text: "100", correct: false }, { text: "140", correct: false }] },
+            { question: "Qual o dobro de 150?", answers: [{ text: "300", correct: true }, { text: "200", correct: false }, { text: "250", correct: false }] },
+            { question: "Quanto é 0,1 + 0,2 + 0,3?", answers: [{ text: "0,6", correct: true }, { text: "0,5", correct: false }, { text: "0,7", correct: false }] },
+            { question: "Se um triângulo tem lados de 3 cm, 4 cm e 5 cm, qual o seu perímetro?", answers: [{ text: "12 cm", correct: true }, { text: "10 cm", correct: false }, { text: "15 cm", correct: false }] },
+            { question: "Qual o resultado de 500 - 180?", answers: [{ text: "320", correct: true }, { text: "380", correct: false }, { text: "300", correct: false }] },
+            { question: "Se você tem 4 moedas de R$ 0,25, quanto dinheiro você tem?", answers: [{ text: "R$ 1,00", correct: true }, { text: "R$ 0,75", correct: false }, { text: "R$ 0,50", correct: false }] },
+            { question: "Quanto é 3 x 7 + 2?", answers: [{ text: "23", correct: true }, { text: "21", correct: false }, { text: "25", correct: false }] },
+            { question: "Qual é a metade de 300?", answers: [{ text: "150", correct: true }, { text: "100", correct: false }, { text: "200", correct: false }] },
+            { question: "Qual o resultado de 10 - 2,5?", answers: [{ text: "7,5", correct: true }, { text: "8,5", correct: false }, { text: "7", correct: false }] },
+            { question: "Se um ônibus parte às 8:30 e a viagem dura 45 minutos, a que horas ele chega?", answers: [{ text: "9:15", correct: true }, { text: "9:00", correct: false }, { text: "9:30", correct: false }] },
+            { question: "Quanto é 50 ÷ 2 x 3?", answers: [{ text: "75", correct: true }, { text: "15", correct: false }, { text: "50", correct: false }] },
+            { question: "Se um ano tem 365 dias, quantos dias há em 2 anos?", answers: [{ text: "730", correct: true }, { text: "720", correct: false }, { text: "700", correct: false }] },
+            { question: "Qual o valor de 2,4 + 1,6?", answers: [{ text: "4,0", correct: true }, { text: "3,8", correct: false }, { text: "3,5", correct: false }] },
+            { question: "Se você tem R$ 20 e compra algo de R$ 12,50, quanto sobra?", answers: [{ text: "R$ 7,50", correct: true }, { text: "R$ 8,00", correct: false }, { text: "R$ 7,00", correct: false }] },
+            { question: "Qual o resultado de 60 ÷ 10 + 5?", answers: [{ text: "11", correct: true }, { text: "10", correct: false }, { text: "12", correct: false }] },
+            { question: "Se uma garrafa contém 500 ml de água, quantos litros há em 4 garrafas?", answers: [{ text: "2 litros", correct: true }, { text: "1 litro", correct: false }, { text: "4 litros", correct: false }] },
+            { question: "Quanto é 1/3 de 90?", answers: [{ text: "30", correct: true }, { text: "20", correct: false }, { text: "45", correct: false }] },
+            { question: "Qual o número ímpar depois de 79?", answers: [{ text: "81", correct: true }, { text: "80", correct: false }, { text: "78", correct: false }] },
+            { question: "Se um relógio marca 14:00, que horas são no formato 12 horas?", answers: [{ text: "2:00 PM", correct: true }, { text: "4:00 PM", correct: false }, { text: "1:00 PM", correct: false }] },
+            { question: "Qual o resultado de 15 x 6?", answers: [{ text: "90", correct: true }, { text: "80", correct: false }, { text: "100", correct: false }] },
+            { question: "Se uma torta tem 12 fatias, e você comeu 1/4 dela, quantas fatias você comeu?", answers: [{ text: "3", correct: true }, { text: "4", correct: false }, { text: "6", correct: false }] },
+            { question: "Quanto é 75 ÷ 5?", answers: [{ text: "15", correct: true }, { text: "12", correct: false }, { text: "20", correct: false }] },
+            { question: "Se você tem 120 laranjas e divide por 10 pessoas, quantas laranjas cada um recebe?", answers: [{ text: "12", correct: true }, { text: "10", correct: false }, { text: "15", correct: false }] },
+            { question: "Qual o valor de 5/10 + 3/10?", answers: [{ text: "8/10", correct: true }, { text: "8/20", correct: false }, { text: "2/10", correct: false }] },
+            { question: "Quanto é 9,50 - 3,25?", answers: [{ text: "6,25", correct: true }, { text: "6,50", correct: false }, { text: "7,00", correct: false }] },
+            { question: "Se um cinema tem 10 fileiras com 20 cadeiras cada, quantas cadeiras há no total?", answers: [{ text: "200", correct: true }, { text: "100", correct: false }, { text: "300", correct: false }] },
+            { question: "Qual é o resultado de 100 ÷ 4?", answers: [{ text: "25", correct: true }, { text: "20", correct: false }, { text: "30", correct: false }] },
+            { question: "Quanto é 1/2 + 1/4?", answers: [{ text: "3/4", correct: true }, { text: "2/6", correct: false }, { text: "1/2", correct: false }] },
+            { question: "Se um campo de futebol tem 100 metros de comprimento, quantos metros tem o perímetro se a largura for 50 metros?", answers: [{ text: "300 m", correct: true }, { text: "150 m", correct: false }, { text: "200 m", correct: false }] },
+            { question: "Qual o valor de 15 x 2 + 5?", answers: [{ text: "35", correct: true }, { text: "30", correct: false }, { text: "40", correct: false }] },
+            { question: "Se você tem 84 lápis e quer fazer grupos de 7, quantos grupos você forma?", answers: [{ text: "12", correct: true }, { text: "10", correct: false }, { text: "14", correct: false }] },
+            { question: "Quanto é 1000 - 50 x 10?", answers: [{ text: "500", correct: true }, { text: "950", correct: false }, { text: "450", correct: false }] },
+            { question: "Se um carro viaja a 60 km/h, qual a distância que percorre em 3 horas?", answers: [{ text: "180 km", correct: true }, { text: "120 km", correct: false }, { text: "200 km", correct: false }] },
+            { question: "Qual o resultado de 5,7 + 3,8?", answers: [{ text: "9,5", correct: true }, { text: "8,5", correct: false }, { text: "9,8", correct: false }] },
+            { question: "Se uma semana tem 7 dias, quantos dias há em 4 semanas?", answers: [{ text: "28", correct: true }, { text: "30", correct: false }, { text: "21", correct: false }] },
+            { question: "Quanto é 2000 ÷ 20?", answers: [{ text: "100", correct: true }, { text: "10", correct: false }, { text: "20", correct: false }] },
+            { question: "Se o relógio marca 18:00, são 6 horas da tarde ou da manhã?", answers: [{ text: "6 da tarde", correct: true }, { text: "6 da manhã", correct: false }, { text: "12 da tarde", correct: false }] },
+            { question: "Qual o resultado de (5+3) x 4?", answers: [{ text: "32", correct: true }, { text: "20", correct: false }, { text: "24", correct: false }] },
+            { question: "Se você tem R$ 50 e gasta a metade, quanto sobra?", answers: [{ text: "R$ 25", correct: true }, { text: "R$ 20", correct: false }, { text: "R$ 30", correct: false }] },
+            { question: "Quanto é 1/5 de 250?", answers: [{ text: "50", correct: true }, { text: "25", correct: false }, { text: "100", correct: false }] },
+            { question: "Qual o valor de 0,9 - 0,3?", answers: [{ text: "0,6", correct: true }, { text: "0,5", correct: false }, { text: "0,7", correct: false }] },
+            { question: "Se um livro custa R$ 15,00 e você dá R$ 20,00, quanto é o troco?", answers: [{ text: "R$ 5,00", correct: true }, { text: "R$ 4,00", correct: false }, { text: "R$ 6,00", correct: false }] },
+            { question: "Quanto é 6 x 8 + 12?", answers: [{ text: "60", correct: true }, { text: "48", correct: false }, { text: "72", correct: false }] },
+            { question: "Se uma jarra tem 1 litro de suco, e você bebe 250 ml, quanto sobra?", answers: [{ text: "750 ml", correct: true }, { text: "500 ml", correct: false }, { text: "250 ml", correct: false }] },
+            { question: "Qual o resultado de 2,3 x 10?", answers: [{ text: "23", correct: true }, { text: "2,3", correct: false }, { text: "230", correct: false }] },
+            { question: "Se um mês tem 4 semanas e 2 dias, quantos dias há nesse mês?", answers: [{ text: "30", correct: true }, { text: "28", correct: false }, { text: "31", correct: false }] },
+            { question: "Quanto é 45 ÷ 5 + 3?", answers: [{ text: "12", correct: true }, { text: "9", correct: false }, { text: "15", correct: false }] },
+            { question: "Qual é o dobro de 1,5?", answers: [{ text: "3,0", correct: true }, { text: "3,5", correct: false }, { text: "2,5", correct: false }] },
+            { question: "Se um bolo é cortado em 16 pedaços, e você come 1/8, quantos pedaços você comeu?", answers: [{ text: "2", correct: true }, { text: "4", correct: false }, { text: "8", correct: false }] },
+            { question: "Quanto é 750 + 250?", answers: [{ text: "1000", correct: true }, { text: "900", correct: false }, { text: "1200", correct: false }] },
+            { question: "Se uma escola tem 500 alunos e 200 são meninas, quantos são meninos?", answers: [{ text: "300", correct: true }, { text: "250", correct: false }, { text: "200", correct: false }] },
+            { question: "Qual o valor de 1/2 de 1/2?", answers: [{ text: "1/4", correct: true }, { text: "1/2", correct: false }, { text: "1", correct: false }] },
+            { question: "Quanto é 3,50 + 4,50?", answers: [{ text: "8,00", correct: true }, { text: "7,50", correct: false }, { text: "9,00", correct: false }] },
+            { question: "Se uma fita tem 200 cm, e você corta um pedaço de 125 cm, quanto sobra?", answers: [{ text: "75 cm", correct: true }, { text: "85 cm", correct: false }, { text: "65 cm", correct: false }] },
+            { question: "Qual o resultado de 10 x 10 x 10?", answers: [{ text: "1000", correct: true }, { text: "100", correct: false }, { text: "10000", correct: false }] },
+            { question: "Se um litro de leite custa R$ 4,20, quanto custam 2 litros?", answers: [{ text: "R$ 8,40", correct: true }, { text: "R$ 8,00", correct: false }, { text: "R$ 8,20", correct: false }] },
+            { question: "Quanto é 20 - 5 x 2?", answers: [{ text: "10", correct: true }, { text: "30", correct: false }, { text: "15", correct: false }] },
+            { question: "Qual o valor de 4/5 - 1/5?", answers: [{ text: "3/5", correct: true }, { text: "2/5", correct: false }, { text: "4/5", correct: false }] },
+            { question: "Se um trem parte às 10:00 e a viagem dura 3 horas e 30 minutos, a que horas ele chega?", answers: [{ text: "13:30", correct: true }, { text: "13:00", correct: false }, { text: "14:00", correct: false }] },
+            { question: "Quanto é 300 ÷ 6?", answers: [{ text: "50", correct: true }, { text: "40", correct: false }, { text: "60", correct: false }] },
+            { question: "Qual o resultado de 7 x 7 + 1?", answers: [{ text: "50", correct: true }, { text: "49", correct: false }, { text: "56", correct: false }] },
+            { question: "Se um quadrado tem perímetro de 24 cm, qual a medida de seu lado?", answers: [{ text: "6 cm", correct: true }, { text: "4 cm", correct: false }, { text: "8 cm", correct: false }] },
+            { question: "Quanto é 1,2 + 3,4 + 5,6?", answers: [{ text: "10,2", correct: true }, { text: "9,8", correct: false }, { text: "10,4", correct: false }] },
+            { question: "Se você tem 12 moedas de R$ 0,50, quanto dinheiro você tem?", answers: [{ text: "R$ 6,00", correct: true }, { text: "R$ 5,00", correct: false }, { text: "R$ 7,00", correct: false }] },
+            { question: "Qual o valor de 200 - 50 + 25?", answers: [{ text: "175", correct: true }, { text: "225", correct: false }, { text: "125", correct: false }] },
+            { question: "Se um pacote de figurinhas tem 5 figurinhas, quantas há em 15 pacotes?", answers: [{ text: "75", correct: true }, { text: "60", correct: false }, { text: "80", correct: false }] },
+            { question: "Quanto é 100 ÷ 10 x 2?", answers: [{ text: "20", correct: true }, { text: "5", correct: false }, { text: "10", correct: false }] },
+            { question: "Qual o triplo de 50?", answers: [{ text: "150", correct: true }, { text: "125", correct: false }, { text: "100", correct: false }] },
+            { question: "Se um ano tem 12 meses, quantos meses há em 5 anos?", answers: [{ text: "60", correct: true }, { text: "50", correct: false }, { text: "48", correct: false }] }
+        ];
+
+        // Elementos do DOM
+        const startScreen = document.getElementById('start-screen');
+        const quizScreen = document.getElementById('quiz-screen');
+        const resultsScreen = document.getElementById('results-screen');
+        const startBtn = document.getElementById('start-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        
+        const questionText = document.getElementById('question-text');
+        const answersBox = document.getElementById('answers-box');
+        const feedbackEl = document.getElementById('feedback');
+        
+        const questionNumberEl = document.getElementById('question-number');
+        const totalQuestionsEl = document.getElementById('total-questions');
+        const scoreEl = document.getElementById('score');
+        const finalScoreEl = document.getElementById('final-score');
+        const resultsTitle = document.getElementById('results-title');
+
+        // Timer
+        const timeLeftEl = document.getElementById('time-left');
+        const timerPathRemaining = document.getElementById('timer-path-remaining');
+        const TIME_LIMIT = 15;
+        const FULL_DASH_ARRAY = 283; // Circunferência do círculo
+        let timeLeft = TIME_LIMIT;
+        let timerAnimationId = null;
+        let startTime;
+        
+        // Estado do Quiz
+        let shuffledQuestions, currentQuestionIndex;
+        let score = 0;
+
+        // Funções do Quiz
+        function startQuiz() {
+            startScreen.classList.add('hidden');
+            resultsScreen.classList.add('hidden');
+            quizScreen.classList.remove('hidden');
+            
+            // Embaralha todo o banco de dados e seleciona as 7 primeiras perguntas
+            const allQuestionsShuffled = quizData.sort(() => Math.random() - 0.5);
+            shuffledQuestions = allQuestionsShuffled.slice(0, 7);
+
+            currentQuestionIndex = 0;
+            score = 0;
+            scoreEl.innerText = score;
+            totalQuestionsEl.innerText = shuffledQuestions.length; // Agora será 7
+            
+            setNextQuestion();
+        }
+
+        function setNextQuestion() {
+            resetState();
+            if (currentQuestionIndex < shuffledQuestions.length) {
+                showQuestion(shuffledQuestions[currentQuestionIndex]);
+                startTimer();
+            } else {
+                showResults();
+            }
+        }
+
+        function showQuestion(question) {
+            questionNumberEl.innerText = currentQuestionIndex + 1;
+            questionText.innerText = question.question;
+            const shuffledAnswers = question.answers.sort(() => Math.random() - 0.5);
+            shuffledAnswers.forEach(answer => {
+                const button = document.createElement('button');
+                button.innerText = answer.text;
+                button.classList.add('answer-btn', 'w-full', 'p-4', 'bg-white', 'dark:bg-gray-800', 'dark:text-white', 'rounded-xl', 'text-lg', 'font-semibold', 'border-2', 'border-gray-300', 'dark:border-gray-600');
+                if (answer.correct) {
+                    button.dataset.correct = answer.correct;
+                }
+                button.addEventListener('click', selectAnswer);
+                answersBox.appendChild(button);
+            });
+        }
+        
+        function resetState() {
+            clearStatusClass(document.body);
+            feedbackEl.innerText = '';
+            while (answersBox.firstChild) {
+                answersBox.removeChild(answersBox.firstChild);
+            }
+            timeLeft = TIME_LIMIT;
+            if (timerAnimationId) {
+                cancelAnimationFrame(timerAnimationId);
+            }
+        }
+
+        function selectAnswer(e) {
+            if (timerAnimationId) {
+                cancelAnimationFrame(timerAnimationId);
+            }
+            const selectedBtn = e.target;
+            const correct = selectedBtn.dataset.correct === 'true';
+            
+            if(correct) {
+                score += 10;
+                scoreEl.innerText = score;
+                feedbackEl.innerText = "Resposta Correta!";
+                feedbackEl.classList.add('text-green-500');
+            } else {
+                feedbackEl.innerText = "Resposta Incorreta!";
+                feedbackEl.classList.add('text-red-500');
+            }
+
+            Array.from(answersBox.children).forEach(button => {
+                setStatusClass(button, button.dataset.correct);
+                button.disabled = true; // Desabilita botões após a escolha
+            });
+
+            setTimeout(() => {
+                currentQuestionIndex++;
+                setNextQuestion();
+            }, 2000);
+        }
+
+        function setStatusClass(element, correct) {
+            clearStatusClass(element);
+            if (correct) {
+                element.classList.add('correct');
+            } else {
+                element.classList.add('incorrect');
+            }
+        }
+        
+        function clearStatusClass(element) {
+            element.classList.remove('correct');
+            element.classList.remove('incorrect');
+            feedbackEl.classList.remove('text-green-500', 'text-red-500');
+        }
+
+        function showResults() {
+            quizScreen.classList.add('hidden');
+            resultsScreen.classList.remove('hidden');
+            finalScoreEl.innerText = score;
+            
+            const totalPossibleScore = shuffledQuestions.length * 10;
+            if (score > totalPossibleScore / 2) {
+                resultsTitle.innerText = "Mandou bem! Você realmente domina o assunto. Parabéns!";
+            } else {
+                resultsTitle.innerText = "Continue tentando! A jornada do conhecimento é cheia de desafios.";
+            }
+        }
+
+        // Funções do Timer
+        function onTimesUp() {
+            // A animação para por si só, não é necessário cancelar aqui.
+            feedbackEl.innerText = "Tempo esgotado!";
+            feedbackEl.classList.add('text-yellow-500');
+            Array.from(answersBox.children).forEach(button => {
+                setStatusClass(button, button.dataset.correct);
+                button.disabled = true;
+            });
+            setTimeout(() => {
+                currentQuestionIndex++;
+                setNextQuestion();
+            }, 2000);
+        }
+
+        function startTimer() {
+            startTime = performance.now();
+            timerAnimationId = requestAnimationFrame(updateTimer);
+        }
+        
+        function updateTimer(timestamp) {
+            const elapsedTime = (timestamp - startTime) / 1000;
+            timeLeft = TIME_LIMIT - elapsedTime;
+
+            if (timeLeft <= 0) {
+                timeLeft = 0;
+                timeLeftEl.innerText = formatTime(timeLeft);
+                setCircleDasharray();
+                onTimesUp();
+                return; // Para o loop da animação
+            }
+
+            timeLeftEl.innerText = formatTime(timeLeft);
+            setCircleDasharray();
+
+            timerAnimationId = requestAnimationFrame(updateTimer);
+        }
+        
+        function formatTime(time) {
+            return Math.ceil(time);
+        }
+
+        function calculateTimeFraction() {
+            const fraction = timeLeft / TIME_LIMIT;
+            return Math.max(0, fraction); // Garante que a fração não seja negativa
+        }
+
+        function setCircleDasharray() {
+            const circleDasharray = `${(
+                calculateTimeFraction() * FULL_DASH_ARRAY
+            ).toFixed(0)} 283`;
+            timerPathRemaining.setAttribute("stroke-dasharray", circleDasharray);
+            
+            // Muda a cor do timer
+            const timerPath = document.getElementById('timer-path-remaining');
+            timerPath.classList.remove('text-yellow-500', 'text-red-500', 'text-[#00A99D]');
+            if(timeLeft <= 5) {
+                timerPath.classList.add('text-red-500');
+            } else if (timeLeft <= 10) {
+                timerPath.classList.add('text-yellow-500');
+            } else {
+                timerPath.classList.add('text-[#00A99D]');
+            }
+        }
+
+        startBtn.addEventListener('click', startQuiz);
+        restartBtn.addEventListener('click', startQuiz);
+    </script>
+</body>
+</html>
+
